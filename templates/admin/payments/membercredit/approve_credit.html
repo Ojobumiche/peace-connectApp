@@ -1,0 +1,288 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  /* ── Layout ── */
+  .ca-wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+
+  /* ── Progress bar ── */
+  .ca-steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 28px;
+  }
+  .ca-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #9ca3af;
+  }
+  .ca-step.active { color: #1d4ed8; }
+  .ca-step.done   { color: #059669; }
+  .ca-step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    background: #e5e7eb; color: #6b7280;
+    flex-shrink: 0;
+  }
+  .ca-step.active .ca-step-num {
+    background: #1d4ed8; color: #fff;
+  }
+  .ca-step.done .ca-step-num {
+    background: #059669; color: #fff;
+  }
+  .ca-step-line {
+    flex: 1; height: 2px;
+    background: #e5e7eb;
+    margin: 0 6px;
+  }
+  .ca-step-line.done { background: #059669; }
+
+  /* ── Info card ── */
+  .ca-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin-bottom: 22px;
+  }
+  .ca-card-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #64748b;
+    margin-bottom: 10px;
+  }
+  .ca-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 14px;
+    padding: 4px 0;
+  }
+  .ca-row-label { color: #475569; }
+  .ca-row-value { font-weight: 600; color: #1e293b; }
+  .ca-balance-big {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1d4ed8;
+    margin-top: 4px;
+  }
+
+  /* ── Form fields ── */
+  .ca-form-section {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 22px 22px 14px;
+    margin-bottom: 22px;
+  }
+  .ca-form-section h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #334155;
+    margin: 0 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .ca-field { margin-bottom: 16px; }
+  .ca-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 5px;
+  }
+  .ca-field select,
+  .ca-field input[type="number"],
+  .ca-field input[type="text"],
+  .ca-field textarea {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    font-size: 14px;
+    color: #1f2937;
+    background: #fff;
+    box-sizing: border-box;
+    transition: border-color .15s;
+  }
+  .ca-field select:focus,
+  .ca-field input:focus,
+  .ca-field textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+  }
+  .ca-field .ca-help {
+    font-size: 11.5px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+  .ca-field .errorlist {
+    color: #dc2626;
+    font-size: 12px;
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+  }
+
+  /* ── Error banner ── */
+  .ca-error-banner {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #b91c1c;
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+
+  /* ── Buttons ── */
+  .ca-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 4px;
+  }
+  .ca-btn-primary {
+    padding: 10px 28px;
+    background: #1d4ed8;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .ca-btn-primary:hover { background: #1e40af; }
+  .ca-btn-cancel {
+    font-size: 13px;
+    color: #6b7280;
+    text-decoration: none;
+  }
+  .ca-btn-cancel:hover { color: #374151; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ca-wrap">
+
+  <!-- ── Step indicator ── -->
+  <div class="ca-steps">
+    <div class="ca-step active">
+      <div class="ca-step-num">1</div>
+      <span>Select Levy &amp; Amount</span>
+    </div>
+    <div class="ca-step-line"></div>
+    <div class="ca-step">
+      <div class="ca-step-num">2</div>
+      <span>Confirm Approval</span>
+    </div>
+    <div class="ca-step-line"></div>
+    <div class="ca-step">
+      <div class="ca-step-num">3</div>
+      <span>Credit Allocated</span>
+    </div>
+  </div>
+
+  <!-- ── Member + credit summary ── -->
+  <div class="ca-card">
+    <div class="ca-card-title">Member Credit</div>
+    <div class="ca-row">
+      <span class="ca-row-label">Member</span>
+      <span class="ca-row-value">{{ credit.member }}</span>
+    </div>
+    <div class="ca-row">
+      <span class="ca-row-label">Payment reference</span>
+      <span class="ca-row-value">{{ credit.payment.reference }}</span>
+    </div>
+    <div class="ca-row">
+      <span class="ca-row-label">Total credit</span>
+      <span class="ca-row-value">₦{{ credit.amount|floatformat:2 }}</span>
+    </div>
+    <div class="ca-row">
+      <span class="ca-row-label">Already used</span>
+      <span class="ca-row-value">₦{{ credit.amount_used_calculated|floatformat:2 }}</span>
+    </div>
+    <div class="ca-row" style="margin-top:6px;border-top:1px solid #e2e8f0;padding-top:10px;">
+      <span class="ca-row-label" style="font-weight:600;">Available balance</span>
+      <div class="ca-balance-big">₦{{ credit.balance|floatformat:2 }}</div>
+    </div>
+  </div>
+
+  <!-- ── Form ── -->
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="ca-error-banner">
+      {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <div class="ca-form-section">
+      <h3>Step 1 — Select Future Levy &amp; Enter Amount</h3>
+
+      <!-- Future levy -->
+      <div class="ca-field">
+        <label for="{{ form.member_levy.id_for_label }}">
+          {{ form.member_levy.label }}
+        </label>
+        {{ form.member_levy.errors }}
+        {{ form.member_levy }}
+        {% if form.member_levy.help_text %}
+          <div class="ca-help">{{ form.member_levy.help_text }}</div>
+        {% endif %}
+      </div>
+
+      <!-- Amount -->
+      <div class="ca-field">
+        <label for="{{ form.amount.id_for_label }}">
+          {{ form.amount.label }}
+        </label>
+        {{ form.amount.errors }}
+        {{ form.amount }}
+        <div class="ca-help">
+          Maximum: ₦{{ credit.balance|floatformat:2 }} (available credit)
+        </div>
+      </div>
+
+      <!-- Approval note -->
+      <div class="ca-field">
+        <label for="{{ form.approval_note.id_for_label }}">
+          {{ form.approval_note.label }}
+        </label>
+        {{ form.approval_note.errors }}
+        {{ form.approval_note }}
+        {% if form.approval_note.help_text %}
+          <div class="ca-help">{{ form.approval_note.help_text }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="ca-actions">
+      <button type="submit" class="ca-btn-primary">
+        Review &amp; Confirm →
+      </button>
+      <a href="{% url 'admin:payments_membercredit_changelist' %}" class="ca-btn-cancel">
+        Cancel
+      </a>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

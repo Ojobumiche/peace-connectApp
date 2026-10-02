@@ -1,0 +1,256 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  /* ── Layout ── */
+  .ca-wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+
+  /* ── Progress bar ── */
+  .ca-steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 28px;
+  }
+  .ca-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #9ca3af;
+  }
+  .ca-step.active { color: #1d4ed8; }
+  .ca-step.done   { color: #059669; }
+  .ca-step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    background: #e5e7eb; color: #6b7280;
+    flex-shrink: 0;
+  }
+  .ca-step.active .ca-step-num {
+    background: #1d4ed8; color: #fff;
+  }
+  .ca-step.done .ca-step-num {
+    background: #059669; color: #fff;
+  }
+  .ca-step-line {
+    flex: 1; height: 2px;
+    background: #e5e7eb;
+    margin: 0 6px;
+  }
+  .ca-step-line.done { background: #059669; }
+
+  /* ── Confirm card ── */
+  .ca-confirm-card {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 10px;
+    padding: 24px 26px;
+    margin-bottom: 22px;
+  }
+  .ca-confirm-card-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #166534;
+    margin-bottom: 14px;
+  }
+  .ca-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 14px;
+    padding: 6px 0;
+    border-bottom: 1px solid #dcfce7;
+  }
+  .ca-row:last-child { border-bottom: none; }
+  .ca-row-label { color: #374151; }
+  .ca-row-value { font-weight: 600; color: #1e293b; }
+
+  /* ── Allocation highlight ── */
+  .ca-alloc-block {
+    background: #fff;
+    border: 2px solid #1d4ed8;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .ca-alloc-label {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 600;
+  }
+  .ca-alloc-amount {
+    font-size: 30px;
+    font-weight: 700;
+    color: #1d4ed8;
+  }
+
+  /* ── Warning notice ── */
+  .ca-warning {
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #92400e;
+    margin-bottom: 22px;
+    line-height: 1.5;
+  }
+
+  /* ── Note block (when present) ── */
+  .ca-note-block {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 22px;
+  }
+  .ca-note-block-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #64748b;
+    margin-bottom: 6px;
+  }
+  .ca-note-block p {
+    margin: 0;
+    font-size: 13px;
+    color: #374151;
+    white-space: pre-wrap;
+  }
+
+  /* ── Buttons ── */
+  .ca-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 4px;
+  }
+  .ca-btn-confirm {
+    padding: 11px 30px;
+    background: #059669;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .ca-btn-confirm:hover { background: #047857; }
+  .ca-btn-back {
+    padding: 10px 22px;
+    background: #fff;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .ca-btn-back:hover { border-color: #6b7280; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ca-wrap">
+
+  <!-- ── Step indicator ── -->
+  <div class="ca-steps">
+    <div class="ca-step done">
+      <div class="ca-step-num">✔</div>
+      <span>Select Levy &amp; Amount</span>
+    </div>
+    <div class="ca-step-line done"></div>
+    <div class="ca-step active">
+      <div class="ca-step-num">2</div>
+      <span>Confirm Approval</span>
+    </div>
+    <div class="ca-step-line"></div>
+    <div class="ca-step">
+      <div class="ca-step-num">3</div>
+      <span>Credit Allocated</span>
+    </div>
+  </div>
+
+  <!-- ── Allocation amount highlight ── -->
+  <div class="ca-alloc-block">
+    <div class="ca-alloc-label">Credit to be allocated</div>
+    <div class="ca-alloc-amount">₦{{ session_data.amount }}</div>
+  </div>
+
+  <!-- ── Summary of what will be saved ── -->
+  <div class="ca-confirm-card">
+    <div class="ca-confirm-card-title">Please review before confirming</div>
+
+    <div class="ca-row">
+      <span class="ca-row-label">Member</span>
+      <span class="ca-row-value">{{ session_data.member_name }}</span>
+    </div>
+
+    <div class="ca-row">
+      <span class="ca-row-label">Future Levy</span>
+      <span class="ca-row-value">{{ session_data.levy_label }}</span>
+    </div>
+
+    <div class="ca-row">
+      <span class="ca-row-label">Levy Balance (before allocation)</span>
+      <span class="ca-row-value">₦{{ session_data.levy_balance }}</span>
+    </div>
+
+    <div class="ca-row">
+      <span class="ca-row-label">Available Credit (before allocation)</span>
+      <span class="ca-row-value">₦{{ session_data.credit_balance }}</span>
+    </div>
+
+    <div class="ca-row">
+      <span class="ca-row-label" style="font-weight:700;">Amount to Allocate</span>
+      <span class="ca-row-value" style="color:#1d4ed8;">₦{{ session_data.amount }}</span>
+    </div>
+  </div>
+
+  {% if session_data.approval_note %}
+  <div class="ca-note-block">
+    <div class="ca-note-block-title">Approval Note</div>
+    <p>{{ session_data.approval_note }}</p>
+  </div>
+  {% endif %}
+
+  <!-- ── Warning ── -->
+  <div class="ca-warning">
+    ⚠ This action will immediately create a <strong>CreditAllocation</strong> record
+    and mark the member credit as <strong>approved for future use</strong>.
+    This cannot be undone from this interface.
+  </div>
+
+  <!-- ── Confirm / Back buttons ── -->
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="ca-actions">
+      <button type="submit" name="confirm" value="1" class="ca-btn-confirm">
+        ✔ Confirm &amp; Allocate Credit
+      </button>
+      <button type="submit" name="back" value="1" class="ca-btn-back">
+        ← Back
+      </button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}
