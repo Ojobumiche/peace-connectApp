@@ -36,10 +36,13 @@ def apply_levy_template(template: LevyTemplate, period_str: str, user=None) -> i
         )
         if was_created:
             created += 1
-            # Trigger notification (async)
-            from notifications.tasks import send_levy_assigned_notification
-            ml = MemberLevy.objects.get(member=member, levy=levy, period=period)
-            send_levy_assigned_notification.delay(ml.pk)
+            # Trigger notification (async — safe if Redis is not running)
+            try:
+                from notifications.tasks import send_levy_assigned_notification
+                ml = MemberLevy.objects.get(member=member, levy=levy, period=period)
+                send_levy_assigned_notification.delay(ml.pk)
+            except Exception:
+                pass
 
     # Mark template as applied
     template.is_applied = True

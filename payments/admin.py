@@ -54,6 +54,7 @@ class PaymentAdmin(admin.ModelAdmin):
         "payment_method",
         "reference",
         "payment_date",
+        "allocation_status",
     )
 
     list_filter = (
@@ -71,6 +72,38 @@ class PaymentAdmin(admin.ModelAdmin):
     actions = (
         allocate_selected_payments,
     )
+
+    def save_model(self, request, obj, form, change):
+        """Auto-allocate immediately after every payment is saved."""
+        super().save_model(request, obj, form, change)
+        result = allocate_payment(obj)
+        credit = result.get("credit", 0)
+        allocated = result.get("allocated", 0)
+        if allocated:
+            self.message_user(
+                request,
+                f"Payment saved and ₦{allocated:,.2f} allocated to levies."
+                + (f" ₦{credit:,.2f} added as member credit." if credit else ""),
+                messages.SUCCESS,
+            )
+
+    @admin.display(description="Allocated")
+    def allocation_status(self, obj):
+        from decimal import Decimal
+        from django.db.models import Sum
+        total = (
+            obj.allocations.aggregate(t=Sum("amount_allocated"))["t"]
+            or Decimal("0.00")
+        )
+        if total >= obj.amount:
+            return mark_safe(
+                '<span style="color:#059669;font-weight:700;">&#10004; Full</span>'
+            )
+        if total > 0:
+            return mark_safe(
+                f'<span style="color:#d97706;font-weight:700;">Partial ₦{total:,.0f}</span>'
+            )
+        return mark_safe('<span style="color:#dc2626;font-weight:700;">None</span>')
 
 
 # ============================================================

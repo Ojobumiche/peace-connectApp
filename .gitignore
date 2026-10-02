@@ -32,3 +32,6 @@ celerybeat.pid
 
 # Logs
 *.log
+
+# Celery filesystem broker
+.celery_tasks/

@@ -132,12 +132,20 @@ SIMPLE_JWT = {
 
 
 # ── Celery ────────────────────────────────────────────────────
-CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
-CELERY_RESULT_BACKEND = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
-CELERY_ACCEPT_CONTENT = ["json"]
-CELERY_TASK_SERIALIZER = "json"
-CELERY_TIMEZONE = "Africa/Lagos"
-CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+# Production: set REDIS_URL env var (e.g. on Railway/Render).
+# Development (no Redis): tasks run synchronously in the same process
+# via TASK_ALWAYS_EAGER — zero extra setup required.
+_REDIS_URL = os.environ.get("REDIS_URL", "")
+CELERY_BROKER_URL          = _REDIS_URL or "memory://"
+CELERY_RESULT_BACKEND      = _REDIS_URL or "cache+memory://"
+CELERY_ACCEPT_CONTENT      = ["json"]
+CELERY_TASK_SERIALIZER     = "json"
+CELERY_TIMEZONE            = "Africa/Lagos"
+CELERY_BEAT_SCHEDULER      = "django_celery_beat.schedulers:DatabaseScheduler"
+# When no Redis URL is set, run tasks inline (no worker needed).
+# A broker error will NEVER crash the Django web process.
+CELERY_TASK_ALWAYS_EAGER    = not bool(_REDIS_URL)
+CELERY_TASK_EAGER_PROPAGATES = False
 
 
 # ── Email ─────────────────────────────────────────────────────
