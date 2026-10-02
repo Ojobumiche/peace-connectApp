@@ -1,26 +1,29 @@
 import { useQuery } from '@tanstack/react-query'
-import api from '../lib/api'
+import { Link } from 'react-router-dom'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import useAuthStore from '../store/authStore'
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
-} from 'recharts'
+import api from '../lib/api'
 
-const fmt = (n) => `₦${Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+const fmt = (n) =>
+  '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })
 
-function StatCard({ label, value, sub, color = 'blue' }) {
-  const colors = {
-    blue: 'bg-blue-50 border-blue-200 text-blue-800',
-    green: 'bg-green-50 border-green-200 text-green-800',
-    red: 'bg-red-50 border-red-200 text-red-800',
-    amber: 'bg-amber-50 border-amber-200 text-amber-800',
-  }
+function StatCard({ label, value, sub, colorClass, icon }) {
   return (
-    <div className={`rounded-xl border p-5 ${colors[color]}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide opacity-70 mb-1">{label}</p>
+    <div className={`rounded-2xl p-5 ${colorClass}`}>
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-xs font-semibold uppercase tracking-wider opacity-70">{label}</p>
+        <span className="text-xl opacity-80">{icon}</span>
+      </div>
       <p className="text-2xl font-bold">{value}</p>
       {sub && <p className="text-xs mt-1 opacity-60">{sub}</p>}
     </div>
   )
+}
+
+const STATUS_COLORS = {
+  PAID:    'bg-green-100 text-green-700 border-green-200',
+  PARTIAL: 'bg-amber-100 text-amber-700 border-amber-200',
+  UNPAID:  'bg-red-100   text-red-700   border-red-200',
 }
 
 export default function Dashboard() {
@@ -31,103 +34,180 @@ export default function Dashboard() {
     queryFn: () => api.get('/api/me/dashboard/').then((r) => r.data),
   })
 
-  if (isLoading) return (
-    <div className="flex items-center justify-center h-64 text-gray-400">Loading…</div>
-  )
-  if (error) return (
-    <div className="text-red-600 p-6">Failed to load dashboard.</div>
-  )
+  if (isLoading) return <LoadingSkeleton />
+  if (error)     return <ErrorBanner msg="Could not load your dashboard. Is the server running?" />
 
-  const member = data.member
-  const payments = data.recent_payments || []
+  const { member, recent_levies = [], recent_payments = [], unread_notifications = 0 } = data
 
-  const chartData = payments.map((p) => ({
-    ref: p.reference?.slice(-6),
-    amount: parseFloat(p.amount),
-  }))
+  // Build payment bar chart data
+  const chartData = [...recent_payments]
+    .reverse()
+    .map((p) => ({
+      label: new Date(p.payment_date).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' }),
+      amount: parseFloat(p.amount),
+    }))
+
+  // Levy status breakdown
+  const statusCount = recent_levies.reduce((acc, l) => {
+    acc[l.status] = (acc[l.status] || 0) + 1
+    return acc
+  }, {})
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">
-          Welcome, {member.first_name} 👋
-        </h1>
-        <p className="text-sm text-gray-500">{member.house_address}</p>
+    <div className="space-y-6 pb-24 lg:pb-6">
+
+      {/* Welcome */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">
+            Welcome back, {member.first_name} 👋
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">{member.house_address}</p>
+        </div>
+        {unread_notifications > 0 && (
+          <Link
+            to="/notifications"
+            className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-blue-100 transition-colors"
+          >
+            <span className="w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold">
+              {unread_notifications}
+            </span>
+            New alerts
+          </Link>
+        )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Levied" value={fmt(member.total_levy_due)} color="blue" />
-        <StatCard label="Total Paid" value={fmt(member.total_levy_paid)} color="green" />
+      {/* 4 stat cards */}
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard
+          label="Total Levied"
+          value={fmt(member.total_levy_due)}
+          sub="All levies assigned to you"
+          icon="📋"
+          colorClass="bg-slate-800 text-white"
+        />
+        <StatCard
+          label="Total Paid"
+          value={fmt(member.total_levy_paid)}
+          sub="Confirmed contributions"
+          icon="✅"
+          colorClass="bg-green-600 text-white"
+        />
         <StatCard
           label="Amount Owed"
           value={fmt(member.outstanding_balance)}
-          color={parseFloat(member.outstanding_balance) > 0 ? 'red' : 'green'}
+          sub={parseFloat(member.outstanding_balance) > 0 ? 'Please clear this soon' : 'You are up to date!'}
+          icon={parseFloat(member.outstanding_balance) > 0 ? '⚠️' : '🎉'}
+          colorClass={parseFloat(member.outstanding_balance) > 0 ? 'bg-red-50 border border-red-200 text-red-800' : 'bg-green-50 border border-green-200 text-green-800'}
         />
-        <StatCard label="Credit Balance" value={fmt(member.available_credit)} color="amber" />
+        <StatCard
+          label="Credit Balance"
+          value={fmt(member.available_credit)}
+          sub="Available for future levies"
+          icon="🏦"
+          colorClass="bg-blue-50 border border-blue-200 text-blue-800"
+        />
       </div>
 
-      {/* Unread notifications badge */}
-      {data.unread_notifications > 0 && (
-        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold">
-            {data.unread_notifications}
-          </span>
-          <p className="text-sm text-blue-800 font-medium">
-            You have {data.unread_notifications} unread notification{data.unread_notifications > 1 ? 's' : ''}.
-          </p>
-        </div>
-      )}
-
-      {/* Recent payments chart */}
+      {/* Payment trend */}
       {chartData.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Recent Payments</h2>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="ref" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₦${(v/1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v) => fmt(v)} />
-              <Bar dataKey="amount" fill="#1d4ed8" radius={[4, 4, 0, 0]} />
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-800">Recent Payments</h2>
+            <Link to="/payments" className="text-xs text-blue-600 font-medium hover:underline">
+              View all →
+            </Link>
+          </div>
+          <ResponsiveContainer width="100%" height={150}>
+            <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false}
+                tickFormatter={(v) => v >= 1000 ? `₦${(v / 1000).toFixed(0)}k` : `₦${v}`}
+              />
+              <Tooltip
+                formatter={(v) => [fmt(v), 'Amount']}
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+              />
+              <Bar dataKey="amount" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={48} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
 
       {/* Recent levies */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">Recent Levies</h2>
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-800">Recent Levies</h2>
+          <Link to="/levies" className="text-xs text-blue-600 font-medium hover:underline">
+            View all →
+          </Link>
         </div>
-        <div className="divide-y divide-gray-50">
-          {data.recent_levies.map((l) => (
-            <div key={l.id} className="flex items-center justify-between px-5 py-3">
-              <div>
-                <p className="text-sm font-medium text-gray-800">{l.levy_name}</p>
-                <p className="text-xs text-gray-400">{l.period}</p>
+
+        {recent_levies.length === 0 ? (
+          <EmptyState msg="No levies assigned yet." />
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {recent_levies.map((l) => (
+              <div key={l.id} className="flex items-center justify-between px-5 py-3.5">
+                <div className="min-w-0 mr-4">
+                  <p className="text-sm font-medium text-gray-800 truncate">{l.levy_name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {new Date(l.period + '-01').toLocaleDateString('en-NG', { month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-gray-800">{fmt(l.balance)}</p>
+                    <p className="text-[10px] text-gray-400">remaining</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${STATUS_COLORS[l.status] || 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                    {l.status}
+                  </span>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-semibold text-gray-800">{fmt(l.balance)} left</p>
-                <StatusPill status={l.status} />
-              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Levy status summary pills */}
+      {Object.keys(statusCount).length > 0 && (
+        <div className="flex gap-3 flex-wrap">
+          {Object.entries(statusCount).map(([status, count]) => (
+            <div key={status} className={`flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-semibold ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+              <span>{count}</span>
+              <span>{status}</span>
             </div>
           ))}
         </div>
-      </div>
+      )}
     </div>
   )
 }
 
-function StatusPill({ status }) {
-  const map = {
-    PAID: 'bg-green-100 text-green-700',
-    PARTIAL: 'bg-amber-100 text-amber-700',
-    UNPAID: 'bg-red-100 text-red-700',
-  }
+function LoadingSkeleton() {
   return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${map[status] || 'bg-gray-100 text-gray-600'}`}>
-      {status}
-    </span>
+    <div className="space-y-4 animate-pulse pb-24 lg:pb-0">
+      <div className="h-8 w-48 bg-gray-200 rounded-xl" />
+      <div className="grid grid-cols-2 gap-3">
+        {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-gray-200 rounded-2xl" />)}
+      </div>
+      <div className="h-48 bg-gray-200 rounded-2xl" />
+      <div className="h-64 bg-gray-200 rounded-2xl" />
+    </div>
   )
+}
+
+function ErrorBanner({ msg }) {
+  return (
+    <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-6 text-sm">
+      <p className="font-semibold mb-1">Something went wrong</p>
+      <p className="text-red-500">{msg}</p>
+    </div>
+  )
+}
+
+function EmptyState({ msg }) {
+  return <p className="text-center text-sm text-gray-400 py-8">{msg}</p>
 }
